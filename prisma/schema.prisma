@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("USER") // USER or ADMIN
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  accounts      Account[]
+  sessions      Session[]
+  wallets       Wallet[]
+  contacts      Contact[]
+  remitIntents  RemitIntent[]
+  auditLogs     AuditLog[]
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String
+  address   String   @unique
+  network   String   @default("polygon-amoy")
+  primary   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model Contact {
+  id             String   @id @default(uuid())
+  userId         String
+  name           String
+  type           String   // PHONE, ADDRESS, ENS
+  value          String   // phone number, wallet address, or ENS name
+  linkedAddress  String?  // resolved ENS address
+  notes          String?  @default("")
+  createdAt      DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model RemitIntent {
+  id              String   @id @default(uuid())
+  userId          String
+  receiverType    String   // PHONE, ADDRESS, ENS
+  receiverPhone   String?
+  receiverAddress String?
+  corridor        String   // e.g., "USD-INR"
+  amountUSDC      String   // Decimal as String for precision
+  feeUSDC         String   // Decimal as String
+  status          String   @default("CREATED") // CREATED, ONCHAIN_CONFIRMED, FAILED
+  txHash          String?
+  remitId         String?  // on-chain remittance ID
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
+  
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  receipt RemitReceipt?
+  cashout Cashout?
+  
+  @@index([userId])
+  @@index([status])
+}
+
+model RemitReceipt {
+  id                 String   @id @default(uuid())
+  remitId            String   @unique
+  senderId           String
+  receiverAddress    String
+  token              String
+  rawEventJson       String   // JSON as text
+  amountUSDC         String   // Decimal as String
+  feeUSDC            String   // Decimal as String
+  corridor           String
+  timestamp          DateTime
+  fxAtSettlement     String   // Decimal as String
+  amountINREstimate  String   // Decimal as String
+  pdfHash            String?
+  shareToken         String?  @unique // For shareable links
+  shareExpiresAt     DateTime?
+  createdAt          DateTime @default(now())
+  
+  intent RemitIntent @relation(fields: [remitId], references: [id], onDelete: Cascade)
+  flags  FraudFlag[]
+  
+  @@index([remitId])
+  @@index([senderId])
+}
+
+model FraudFlag {
+  id        String   @id @default(uuid())
+  remitId   String
+  rule      String
+  score     Int
+  severity  String   // LOW, MEDIUM, HIGH
+  note      String
+  createdAt DateTime @default(now())
+  
+  receipt RemitReceipt @relation(fields: [remitId], references: [id], onDelete: Cascade)
+  
+  @@index([remitId])
+  @@index([severity])
+}
+
+model Cashout {
+  id         String   @id @default(uuid())
+  remitId    String   @unique
+  ref        String   @unique
+  method     String   // upi, bank
+  upiId      String?
+  bankAcct   String?
+  status     String   @default("QUEUED") // QUEUED, PROCESSING, PAID, FAILED
+  eventsJson String   @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  intent RemitIntent @relation(fields: [remitId], references: [id], onDelete: Cascade)
+  
+  @@index([ref])
+  @@index([status])
+}
+
+model AdminConfig {
+  id        Int      @id @default(1)
+  feeBps    Int      @default(25)     // Basis points (25 = 0.25%)
+  fxBase    String   @default("83.00") // Base FX rate
+  fxSpread  String   @default("0.20")  // Spread in INR
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  action      String
+  payloadJson String   // JSON as text
+  createdAt   DateTime @default(now())
+  
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model FeatureFlag {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   // JSON as text
+  updatedAt DateTime @updatedAt
+}
