@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,19 +11,19 @@ import { ArrowLeft, ArrowUpRight, AlertTriangle, ExternalLink } from 'lucide-rea
 import { toast } from 'sonner';
 
 export default function TransactionsPage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !isAuthenticated) {
       router.push('/auth/signin');
-    } else if (status === 'authenticated') {
+    } else if (isAuthenticated) {
       fetchTransactions();
     }
-  }, [status, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   const fetchTransactions = async () => {
     try {
@@ -43,7 +43,7 @@ export default function TransactionsPage() {
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -54,7 +54,7 @@ export default function TransactionsPage() {
     );
   }
 
-  if (!session) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background">

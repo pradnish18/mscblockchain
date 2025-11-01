@@ -2,7 +2,7 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Web3Provider } from '@/components/providers/Web3Provider';
-import { AuthProvider } from '@/components/providers/AuthProvider';
+import { SupabaseAuthProvider } from '@/components/providers/SupabaseAuthProvider';
 import { Toaster } from '@/components/ui/sonner';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -29,12 +29,12 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
+          <SupabaseAuthProvider>
             <Web3Provider>
               {children}
               <Toaster richColors position="top-right" />
             </Web3Provider>
-          </AuthProvider>
+          </SupabaseAuthProvider>
         </ThemeProvider>
       </body>
     </html>

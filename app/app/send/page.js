@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { ArrowLeft, Wallet, Phone, Globe, Clock, AlertTriangle } from 'lucide-re
 import { toast } from 'sonner';
 
 export default function SendPage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState('amount'); // amount, quote, send, processing, success
   const [receiverType, setReceiverType] = useState('ADDRESS');
@@ -30,10 +30,10 @@ export default function SendPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !isAuthenticated) {
       router.push('/auth/signin');
     }
-  }, [status, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     if (quote && step === 'quote') {
@@ -158,11 +158,11 @@ export default function SendPage() {
     }
   };
 
-  if (status === 'loading') {
+  if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  if (!session) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background">

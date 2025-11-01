@@ -1,17 +1,17 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Send, Users, Banknote, CheckCircle, ArrowUpRight, LogOut, History, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Send, Users, Banknote, ArrowUpRight, LogOut, History, TrendingUp, AlertTriangle } from 'lucide-react';
 import Web3Wallet from '@/components/Web3Wallet';
 
 export default function AppDashboard() {
-  const { data: session, status } = useSession();
+  const { user, profile, loading, signOut, isAuthenticated } = useAuth();
   const router = useRouter();
   const [walletAddress, setWalletAddress] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -21,14 +21,14 @@ export default function AppDashboard() {
   const sandbox = true;
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!loading && !isAuthenticated) {
       router.push('/auth/signin');
-    } else if (status === 'authenticated') {
+    } else if (isAuthenticated) {
       fetchContacts();
       fetchTransactions();
       fetchLiveRate();
     }
-  }, [status, router]);
+  }, [loading, isAuthenticated, router]);
 
   const fetchContacts = async () => {
     try {
@@ -48,10 +48,9 @@ export default function AppDashboard() {
       if (res.ok) {
         const data = await res.json();
         setTransactions(data.transactions || []);
-        
-        // Calculate stats
+
         if (data.transactions.length > 0) {
-          const totalVolume = data.transactions.reduce((sum, tx) => 
+          const totalVolume = data.transactions.reduce((sum, tx) =>
             sum + parseFloat(tx.amountUSDC), 0
           );
           setStats({
@@ -78,11 +77,7 @@ export default function AppDashboard() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/' });
-  };
-
-  if (status === 'loading') {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -93,7 +88,7 @@ export default function AppDashboard() {
     );
   }
 
-  if (!session) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,23 +96,28 @@ export default function AppDashboard() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="text-2xl">⛓️</div>
-            <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               RemitChain
             </span>
           </Link>
-          
+
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground hidden md:inline">{session.user.email}</span>
+            <span className="text-sm text-muted-foreground hidden md:inline">{user?.email}</span>
+            {profile?.role === 'ADMIN' && (
+              <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-purple-500/20">
+                Admin
+              </Badge>
+            )}
             {sandbox && (
               <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20">
                 🧪 Sandbox
               </Badge>
             )}
-            <Web3Wallet 
+            <Web3Wallet
               onConnect={setWalletAddress}
               onDisconnect={() => setWalletAddress(null)}
             />
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -127,12 +127,11 @@ export default function AppDashboard() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
-            Welcome back, {session.user.email?.split('@')[0]}!
+            Welcome back, {profile?.name || user?.email?.split('@')[0]}!
           </h1>
           <p className="text-muted-foreground">Manage your cross-border remittances</p>
         </div>
 
-        {/* Live Stats */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
@@ -145,7 +144,7 @@ export default function AppDashboard() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Transactions</CardDescription>
@@ -174,18 +173,17 @@ export default function AppDashboard() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
         <div className="grid md:grid-cols-4 gap-4 mb-8">
           <Link href="/app/send">
             <Card className="cursor-pointer hover:bg-accent transition-colors h-full">
               <CardHeader>
-                <Send className="h-8 w-8 text-indigo-400 mb-2" />
+                <Send className="h-8 w-8 text-blue-400 mb-2" />
                 <CardTitle className="text-lg">Send Money</CardTitle>
                 <CardDescription>Start a new remittance</CardDescription>
               </CardHeader>
             </Card>
           </Link>
-          
+
           <Link href="/app/contacts">
             <Card className="cursor-pointer hover:bg-accent transition-colors h-full">
               <CardHeader>
@@ -195,17 +193,17 @@ export default function AppDashboard() {
               </CardHeader>
             </Card>
           </Link>
-          
+
           <Link href="/app/transactions">
             <Card className="cursor-pointer hover:bg-accent transition-colors h-full">
               <CardHeader>
-                <History className="h-8 w-8 text-purple-400 mb-2" />
+                <History className="h-8 w-8 text-teal-400 mb-2" />
                 <CardTitle className="text-lg">History</CardTitle>
                 <CardDescription>View all transactions</CardDescription>
               </CardHeader>
             </Card>
           </Link>
-          
+
           <Link href="/app/cashout">
             <Card className="cursor-pointer hover:bg-accent transition-colors h-full">
               <CardHeader>
@@ -217,7 +215,6 @@ export default function AppDashboard() {
           </Link>
         </div>
 
-        {/* Quick Send to Contacts */}
         {contacts.length > 0 && (
           <Card className="mb-8">
             <CardHeader>
@@ -242,7 +239,6 @@ export default function AppDashboard() {
           </Card>
         )}
 
-        {/* Recent Transactions */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -261,8 +257,8 @@ export default function AppDashboard() {
             {transactions.length === 0 ? (
               <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                    <ArrowUpRight className="h-5 w-5 text-indigo-400" />
+                  <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <ArrowUpRight className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
                     <div className="font-medium">
@@ -284,8 +280,8 @@ export default function AppDashboard() {
                 {transactions.map((tx) => (
                   <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition-colors">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="h-10 w-10 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                        <ArrowUpRight className="h-5 w-5 text-indigo-400" />
+                      <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                        <ArrowUpRight className="h-5 w-5 text-blue-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -316,14 +312,13 @@ export default function AppDashboard() {
           </CardContent>
         </Card>
 
-        {/* Getting Started */}
         {transactions.length === 0 && (
           <Card className="mt-8 bg-muted/30">
             <CardHeader>
-              <CardTitle className="text-lg">💡 Getting Started</CardTitle>
+              <CardTitle className="text-lg">Getting Started</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>✅ 1. You're signed in as {session.user.email}</p>
+              <p>✅ 1. You're signed in as {user?.email}</p>
               <p>{walletAddress ? '✅' : '⭕'} 2. Connect your wallet (real MetaMask or simulated)</p>
               <p>3. Click "Send Money" to create your first remittance</p>
               <p>4. Add contacts for quick sending</p>

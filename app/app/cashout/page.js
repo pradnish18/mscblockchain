@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { ArrowLeft, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CashoutPage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState('form'); // form, processing, complete
   const [method, setMethod] = useState('upi');
@@ -25,10 +25,10 @@ export default function CashoutPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !isAuthenticated) {
       router.push('/auth/signin');
     }
-  }, [status, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     if (cashoutRef && step === 'processing') {
@@ -96,7 +96,7 @@ export default function CashoutPage() {
     }
   };
 
-  if (status === 'loading') {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -107,7 +107,7 @@ export default function CashoutPage() {
     );
   }
 
-  if (!session) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background">
