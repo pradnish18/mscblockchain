@@ -3,8 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import prisma from '@/lib/prisma';
 import { confirmSchema } from '@/lib/schemas';
-import { isSandboxMode, parseRemittanceCreatedEvent, simulateRemittanceCreated } from '@/lib/contract';
-import { detectFraud, storeFraudFlags } from '@/lib/fraud';
+import { isSandboxMode, parseRemittanceCreatedEvent, simulateRemittanceCreated } from '@/services/contract';
+import { detectFraud, storeFraudFlags } from '@/services/fraud';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 

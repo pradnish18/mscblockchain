@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import prisma from '@/lib/prisma';
-import { generateReceiptHTML } from '@/lib/pdf';
+import { generateReceiptHTML } from '@/services/pdf';
 
 export async function GET(request, { params }) {
   try {
